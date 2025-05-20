@@ -28,14 +28,15 @@ func Register[Params any, Result any](s *Server, method string, fn func(context.
 			return makeErrorResponse(id, ErrInvalidParams)
 		}
 
-		result, err := fn(ctx, &p)
+		res, err := fn(ctx, &p)
 		if err != nil {
 			return makeErrorResponse(id, err)
 		}
 
 		return &RPCResponse{
 			ID:     id,
-			Result: result,
+			Result: res,
+			Error:  nil,
 		}
 	}
 }

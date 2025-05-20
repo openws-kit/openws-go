@@ -21,8 +21,9 @@ type RPCResponse struct {
 
 func makeErrorResponse(id json.RawMessage, err *RPCError) *RPCResponse {
 	return &RPCResponse{
-		ID:    id,
-		Error: err,
+		ID:     id,
+		Result: nil,
+		Error:  err,
 	}
 }
 
@@ -33,7 +34,11 @@ type RPCError struct {
 }
 
 func NewRPCError(code int, msg string) *RPCError {
-	return &RPCError{Code: code, Message: msg}
+	return &RPCError{
+		Code:    code,
+		Message: msg,
+		Data:    nil,
+	}
 }
 
 type RPCErrorable interface {
@@ -51,5 +56,6 @@ func NewInternalError(msg string) *RPCError {
 	return &RPCError{
 		Code:    -32603,
 		Message: msg,
+		Data:    nil,
 	}
 }
