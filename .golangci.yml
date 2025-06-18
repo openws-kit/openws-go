@@ -1,107 +1,74 @@
 version: "2"
 linters:
-  default: none
-  enable:
-    - asasalint
-    - asciicheck
-    - bidichk
-    - bodyclose
-    - canonicalheader
-    - containedctx
-    - contextcheck
-    - copyloopvar
-    - decorder
-    - depguard
-    - dogsled
-    - dupl
-    - durationcheck
-    - err113
-    - errcheck
-    - errname
-    - errorlint
-    - exhaustive
-    - exhaustruct
-    - exptostd
-    - fatcontext
-    - forbidigo
-    - forcetypeassert
-    - ginkgolinter
-    - gocheckcompilerdirectives
-    - gochecknoinits
-    - gochecksumtype
+  default: all
+  disable:
+    - cyclop
+    - dupword
+    # - funcorder
+    - funlen
+    - nlreturn
+    - gochecknoglobals
     - gocognit
-    - goconst
-    - gocritic
-    - goheader
-    - gomoddirectives
-    - gomodguard
-    - goprintffuncname
-    - gosec
-    - gosmopolitan
-    - govet
-    - grouper
-    - iface
-    - importas
-    - inamedparam
-    - ineffassign
-    - interfacebloat
-    - intrange
-    - lll
-    - loggercheck
-    - makezero
-    - mirror
-    - misspell
-    - musttag
-    - nakedret
-    - nilerr
-    - nilnesserr
-    - noctx
-    - nonamedreturns
-    - nosprintfhostport
-    # - paralleltest
-    - perfsprint
-    - prealloc
-    - predeclared
-    - promlinter
-    - protogetter
-    - reassign
-    - revive
-    - rowserrcheck
-    - sloglint
-    - spancheck
-    - sqlclosecheck
-    - staticcheck
-    - tagalign
-    - tagliatelle
-    - testableexamples
-    - testifylint
-    - testpackage
-    - thelper
-    - unconvert
-    - unparam
-    - unused
-    - usestdlibvars
-    - usetesting
-    - wastedassign
-    - whitespace
-    - wrapcheck
+    - varnamelen
+    - gocyclo
+    - godot
+    - godox
+    - maintidx
+    - nestif
+    - nolintlint
+    # - nilnil
+    - recvcheck
+    - mnd
     - wsl
-    - zerologlint
   settings:
+    govet:
+      # Enable all analyzers.
+      # Default: false
+      enable-all: true
+      disable:
+        - fieldalignment # too strict
+      # Settings per analyzer.
+      settings:
+        shadow:
+          # Whether to be strict about shadowing; can be noisy.
+          # Default: false
+          strict: true
     exhaustive:
       # Presence of "default" case in switch statements satisfies exhaustiveness,
       # even if all enum members are not listed.
       # Default: false
       default-signifies-exhaustive: true
+      check:
+        - switch
+        - map
     gosec:
       excludes:
         - G104
+        - G204
         - G301
-        - G306
+        - G304
     revive:
       rules:
         - name: blank-imports
           disabled: true
+    nakedret:
+      # Make an issue if func has more lines of code than this setting, and it has naked returns.
+      # Default: 30
+      max-func-lines: 0
+    forbidigo:
+      forbid:
+        - pattern: os.IsNotExist
+          msg: "use errors.Is(err, os.ErrNotExist) instead of os.IsNotExist"
+        - pattern: os.IsExist
+          msg: "use errors.Is(err, os.ErrExist) instead of os.IsExist"
+    wrapcheck:
+      ignore-package-globs:
+        - os
+    errcheck:
+      # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
+      # Such cases aren't reported by default.
+      # Default: false
+      check-type-assertions: true
     depguard:
       rules:
         all:
@@ -112,26 +79,18 @@ linters:
               desc: Please don't use reflect package
             - pkg: io/ioutil
               desc: io/ioutil package has been deprecated
-    wsl:
-      # Allows assignments to be cuddled with variables used in calls on
-      # line above and calls to be cuddled with assignments of variables
-      # used in call on line above.
-      # https://github.com/bombsimon/wsl/blob/HEAD/doc/configuration.md#allow-assign-and-call
-      # Default: true
-      allow-assign-and-call: false
-      # If the number of lines in a case block is equal to or lager than this number,
-      # the case *must* end white a newline.
-      # https://github.com/bombsimon/wsl/blob/HEAD/doc/configuration.md#force-case-trailing-whitespace
-      # Default: 0
-      force-case-trailing-whitespace: 2
-      # Causes an error when an If statement that checks an error variable doesn't
-      # cuddle with the assignment of that variable.
-      # https://github.com/bombsimon/wsl/blob/HEAD/doc/configuration.md#force-err-cuddling
-      # Default: false
-      force-err-cuddling: true
-      # Default: false
-      allow-cuddle-declarations: true
-      allow-trailing-comment: true
+            - pkg: github.com/golang/protobuf
+              desc: Use google.golang.org/protobuf instead, see https://developers.google.com/protocol-buffers/docs/reference/go/faq#modules
+            - pkg: github.com/satori/go.uuid
+              desc: Use github.com/google/uuid instead, satori's package is not maintained
+            - pkg: github.com/gofrs/uuid$
+              desc: Use github.com/gofrs/uuid/v5 or later, it was not a go module before v5
+        "non-main files":
+          files:
+            - "!**/main.go"
+          deny:
+            - pkg: log$
+              desc: Use log/slog instead, see https://go.dev/blog/slog
     tagliatelle:
       case:
         rules:
@@ -141,10 +100,6 @@ linters:
           bson: camel
           avro: snake
           mapstructure: kebab
-    cyclop:
-      # The maximal code complexity to report.
-      # Default: 10
-      max-complexity: 20
     exhaustruct:
       exclude:
         - ^net/http.Client$
@@ -163,6 +118,7 @@ linters:
         - ^github.com/prometheus/client_golang/.+Opts$
         - ^github.com/spf13/cobra.Command$
         - ^github.com/spf13/cobra.CompletionOptions$
+        - ^github.com/ivanpirog/coloredcobra.Config$
         - ^github.com/stretchr/testify/mock.Mock$
         - ^github.com/testcontainers/testcontainers-go.+Request$
         - ^github.com/testcontainers/testcontainers-go.FromDockerfile$
@@ -178,12 +134,15 @@ linters:
       - linters:
           - errcheck
         source: "^\\s*defer\\s+"
+      - text: 'shadow: declaration of "(err|ctx)" shadows declaration at'
+        linters:
+          - govet
       - linters:
           - bodyclose
           - dupl
           - errcheck
+          - err113
           - exhaustruct
-          - funlen
           - goconst
           - gosec
           - noctx
@@ -192,6 +151,4 @@ linters:
 formatters:
   enable:
     - gofmt
-    # Linter broken, but formatter is fine
-    # - gofumpt
     - goimports
