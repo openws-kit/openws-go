@@ -1,15 +1,14 @@
-.DEFAULT_GOAL := test
+.DEFAULT_GOAL := lint
 
-.PHONY: fmt
-fmt:
-	@gofumpt -w -l .
-	@goimports -w -l .
-	@golangci-lint run --fix
+.PHONY: fmt lint test
 
-.PHONY: lint
-lint:
-	@golangci-lint run
+tool.sum:
+	@go mod tidy -modfile=tool.mod
 
-.PHONY: test
-test:
-	@gotestsum -f testdox
+fmt: tool.sum
+	@go tool -modfile=tool.mod gofumpt -w -l .
+	@go tool -modfile=tool.mod goimports -w -l .
+	@go tool -modfile=tool.mod golangci-lint run --fix
+
+lint: tool.sum
+	@go tool -modfile=tool.mod golangci-lint run
