@@ -5,10 +5,26 @@ import (
 	"fmt"
 )
 
+type RPCErrorer interface {
+	RPCError() *Error
+}
+
 type Error struct {
 	Code    int32  `json:"code"`
 	Message string `json:"message"`
 	Details any    `json:"details,omitempty"`
+}
+
+func (e *Error) Error() string {
+	if e.Details != nil {
+		return fmt.Sprintf("rpc error %d: %s (%v)", e.Code, e.Message, e.Details)
+	}
+
+	return fmt.Sprintf("rpc error %d: %s", e.Code, e.Message)
+}
+
+func (e *Error) RPCError() *Error {
+	return e
 }
 
 func newErrorResponse(id json.RawMessage, err *Error) *Response {
@@ -18,13 +34,6 @@ func newErrorResponse(id json.RawMessage, err *Error) *Response {
 		Result:  nil,
 		Error:   err,
 	}
-}
-
-func (e *Error) Error() string {
-	if e.Details != nil {
-		return fmt.Sprintf("rpc error %d: %s (%v)", e.Code, e.Message, e.Details)
-	}
-	return fmt.Sprintf("rpc error %d: %s", e.Code, e.Message)
 }
 
 const (

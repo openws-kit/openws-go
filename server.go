@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 type Server struct {
@@ -19,42 +20,42 @@ func NewServer() *Server {
 	}
 }
 
-type rawHandler func(ctx context.Context, id json.RawMessage, rawParams json.RawMessage) *Response
+type rawHandler func(ctx context.Context, id json.RawMessage, rawParams json.RawMessage) (any, *Error)
 
 func Register[Params any, Result any](s *Server, method string, fn func(context.Context, *Params) (Result, error)) {
 	if _, exists := s.handlers[method]; exists {
 		panic("duplicate registration of method " + method)
 	}
 
-	s.handlers[method] = func(ctx context.Context, id json.RawMessage, rawParams json.RawMessage) *Response {
+	s.handlers[method] = func(ctx context.Context, id json.RawMessage, rawParams json.RawMessage) (any, *Error) {
 		if len(rawParams) == 0 || string(rawParams) == "null" {
 			rawParams = []byte("{}")
 		}
 
 		var params Params
 		if err := json.Unmarshal(rawParams, &params); err != nil {
-			return newErrorResponse(id, &Error{
+			return nil, &Error{
 				Code:    InvalidParamsCode,
 				Message: err.Error(),
 				Details: nil,
-			})
+			}
 		}
 
 		res, err := fn(ctx, &params)
 		if err != nil {
-			var rpcErr *Error
-			if errors.As(err, &rpcErr) {
-				return newErrorResponse(id, rpcErr)
+			var rpc RPCErrorer
+			if errors.As(err, &rpc) {
+				return nil, rpc.RPCError()
 			}
 
-			return newErrorResponse(id, &Error{
+			return nil, &Error{
 				Code:    InternalErrorCode,
 				Message: err.Error(),
 				Details: nil,
-			})
+			}
 		}
 
-		return newResponse(id, res)
+		return res, nil
 	}
 }
 
@@ -67,52 +68,48 @@ func (s Server) ServeConn(ctx context.Context, conn *websocket.Conn) error {
 
 		response := s.handleRequest(ctx, msg)
 
-		if err := conn.Write(ctx, websocket.MessageText, response); err != nil {
+		if err := wsjson.Write(ctx, conn, response); err != nil {
 			return fmt.Errorf("failed to write: %w", err)
 		}
 	}
 }
 
-func (s Server) handleRequest(ctx context.Context, raw []byte) []byte {
+func (s Server) handleRequest(ctx context.Context, raw []byte) *Response {
 	var req Request
 	if err := json.Unmarshal(raw, &req); err != nil {
-		return MustMarshal(newErrorResponse(req.ID, &Error{
+		return newErrorResponse(req.ID, &Error{
 			Code:    ParseErrorCode,
 			Message: err.Error(),
 			Details: nil,
-		}))
+		})
 	}
 
 	if req.Method == "" || len(req.ID) == 0 {
-		return MustMarshal(newErrorResponse(req.ID, &Error{
+		return newErrorResponse(req.ID, &Error{
 			Code:    InvalidRequestCode,
 			Message: "Invalid request object",
 			Details: nil,
-		}))
+		})
 	}
 
 	h, ok := s.handlers[req.Method]
 	if !ok {
-		return MustMarshal(newErrorResponse(req.ID, &Error{
+		return newErrorResponse(req.ID, &Error{
 			Code:    MethodNotFoundCode,
 			Message: fmt.Sprintf("method %s does not exists", req.Method),
 			Details: nil,
-		}))
+		})
 	}
 
-	resp := h(ctx, req.ID, req.Params)
-
-	return MustMarshal(resp)
-}
-
-func EmitEvent(ctx context.Context, eventName string, data any, conns ...*websocket.Conn) {
-	resp := Event{
-		Event: eventName,
-		Data:  data,
+	res, err := h(ctx, req.ID, req.Params)
+	if err != nil {
+		return newErrorResponse(req.ID, err)
 	}
 
-	raw := MustMarshal(resp)
-	for _, c := range conns {
-		_ = c.Write(ctx, websocket.MessageText, raw)
+	return &Response{
+		JSONRPC: JSONRPCVer,
+		ID:      req.ID,
+		Result:  res,
+		Error:   nil,
 	}
 }

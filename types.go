@@ -24,12 +24,3 @@ type Response struct {
 	Result  any             `json:"result,omitempty"`
 	Error   *Error          `json:"error,omitempty"`
 }
-
-func newResponse(id json.RawMessage, result any) *Response {
-	return &Response{
-		JSONRPC: JSONRPCVer,
-		ID:      id,
-		Result:  result,
-		Error:   nil,
-	}
-}
