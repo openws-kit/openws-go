@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
@@ -112,4 +113,64 @@ func (s Server) handleRequest(ctx context.Context, raw []byte) *Response {
 		Result:  res,
 		Error:   nil,
 	}
+}
+
+type SendResult struct {
+	Conn *websocket.Conn
+	Err  error
+}
+
+func BroadcastEvent(
+	ctx context.Context,
+	eventName string,
+	data any,
+	conns ...*websocket.Conn,
+) (<-chan SendResult, error) {
+	event := &Event{
+		Event: eventName,
+		Data:  data,
+	}
+
+	eventBytes, err := json.Marshal(event)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal event: %w", err)
+	}
+
+	resultCh := make(chan SendResult)
+
+	go func() {
+		var wg sync.WaitGroup
+		wg.Add(len(conns))
+
+		for _, conn := range conns {
+			go func(c *websocket.Conn) {
+				defer wg.Done()
+				err := c.Write(ctx, websocket.MessageText, eventBytes)
+				resultCh <- SendResult{Conn: c, Err: err}
+			}(conn)
+		}
+
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	return resultCh, nil
+}
+
+func SendEvent(
+	ctx context.Context,
+	eventName string,
+	data any,
+	conn *websocket.Conn,
+) error {
+	event := &Event{
+		Event: eventName,
+		Data:  data,
+	}
+
+	if err := wsjson.Write(ctx, conn, event); err != nil {
+		return fmt.Errorf("failed to write to connection: %w", err)
+	}
+
+	return nil
 }
