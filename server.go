@@ -36,7 +36,7 @@ func Register[Params any, Result any](s *Server, method string, fn func(context.
 		var params Params
 		if err := json.Unmarshal(rawParams, &params); err != nil {
 			return nil, &Error{
-				Code:    InvalidParamsCode,
+				Code:    CodeInvalidParams,
 				Message: err.Error(),
 				Details: nil,
 			}
@@ -50,7 +50,7 @@ func Register[Params any, Result any](s *Server, method string, fn func(context.
 			}
 
 			return nil, &Error{
-				Code:    InternalErrorCode,
+				Code:    CodeInternalError,
 				Message: err.Error(),
 				Details: nil,
 			}
@@ -79,7 +79,7 @@ func (s Server) handleRequest(ctx context.Context, raw []byte) *Response {
 	var req Request
 	if err := json.Unmarshal(raw, &req); err != nil {
 		return newErrorResponse(req.ID, &Error{
-			Code:    ParseErrorCode,
+			Code:    CodeParseError,
 			Message: err.Error(),
 			Details: nil,
 		})
@@ -87,7 +87,7 @@ func (s Server) handleRequest(ctx context.Context, raw []byte) *Response {
 
 	if req.Method == "" || len(req.ID) == 0 {
 		return newErrorResponse(req.ID, &Error{
-			Code:    InvalidRequestCode,
+			Code:    CodeInvalidRequest,
 			Message: "Invalid request object",
 			Details: nil,
 		})
@@ -96,7 +96,7 @@ func (s Server) handleRequest(ctx context.Context, raw []byte) *Response {
 	h, ok := s.handlers[req.Method]
 	if !ok {
 		return newErrorResponse(req.ID, &Error{
-			Code:    MethodNotFoundCode,
+			Code:    CodeMethodNotFound,
 			Message: fmt.Sprintf("method %s does not exists", req.Method),
 			Details: nil,
 		})

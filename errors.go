@@ -37,10 +37,10 @@ func newErrorResponse(id json.RawMessage, err *Error) *Response {
 }
 
 const (
-	ParseErrorCode         = -32700
-	InvalidRequestCode     = -32600
-	MethodNotFoundCode     = -32601
-	InvalidParamsCode      = -32602
-	InternalErrorCode      = -32603
-	UnimplementedErrorCode = -32604
+	CodeParseError         = -32700
+	CodeInvalidRequest     = -32600
+	CodeMethodNotFound     = -32601
+	CodeInvalidParams      = -32602
+	CodeInternalError      = -32603
+	CodeUnimplementedError = -32604
 )
