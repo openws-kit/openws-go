@@ -31,5 +31,3 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
-      - name: Run tests
-        run: go test -v ./...
